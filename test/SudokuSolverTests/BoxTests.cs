@@ -6,44 +6,35 @@ namespace sudoku_solver.Tests
 {
     public class BoxTests
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-
         [Test]
         [TestCase(0)]
-        [TestCase(10)]
-        public void Test_10_Contructor_InvalidLine(int line)
+        [TestCase(Board.Size + 1)]
+        public void Test_Box_10_Contructor_InvalidLine(int line)
         {
-            //Arrange
-            var column = 1;
-
             //Act
-            var exception = Assert.Throws<ArgumentException>(() => new Box(line, column));
+            var action = new TestDelegate(() => new Box(line, 1));
 
             //Assert
+            var exception = Assert.Throws<ArgumentException>(action);
             Assert.IsNotNull(exception);
-            Assert.That(exception.Message, Is.EqualTo("line"));
+            Assert.That(exception.Message, Is.EqualTo(nameof(line)));
         }
 
         [Test]
         [TestCase(0)]
-        [TestCase(10)]
-        public void Test_11_Contructor_InvalidColumn(int column)
+        [TestCase(Board.Size + 1)]
+        public void Test_Box_11_Contructor_InvalidColumn(int column)
         {
-            //Arrange
-            var line = 1;
-
             //Act
-            // ActualValueDelegate<object> exception = () => new Box(line, column);
-            var exception = Assert.Throws<ArgumentException>(() => new Box(line, column));
+            // ActualValueDelegate<object> exception = () => new Box(1, column);
+            var action = new TestDelegate(() => new Box(1, column));
 
             //Assert
             // Assert.That(exception, Throws.TypeOf<ArgumentException>());
             // Assert.That(exception, Throws.ArgumentNullException);
+            var exception = Assert.Throws<ArgumentException>(action);
             Assert.IsNotNull(exception);
-            Assert.That(exception.Message, Is.EqualTo("column"));
+            Assert.That(exception.Message, Is.EqualTo(nameof(column)));
            
         }
 
@@ -57,22 +48,18 @@ namespace sudoku_solver.Tests
         [TestCase(7)]
         [TestCase(8)]
         [TestCase(9)]
-        public void Test_12_Contructor_ValidLine(int line)
+        public void Test_Box_12_Contructor_ValidLine(int line)
         {
-            //Arrange
-            var column = 1;
-
             //Act
-            var result = new Box(line, column);
+            var result = new Box(line, 1);
 
             //Assert
             Assert.IsNotNull(result);
             Assert.That(result.Line, Is.EqualTo(line));
-            Assert.That(result.Column, Is.EqualTo(column));
+            Assert.That(result.Column, Is.EqualTo(1));
         }
 
         [Test]
-        [Order(4)]
         [TestCase(1)]
         [TestCase(2)]
         [TestCase(3)]
@@ -82,41 +69,35 @@ namespace sudoku_solver.Tests
         [TestCase(7)]
         [TestCase(8)]
         [TestCase(9)]
-        public void Test_13_Contructor_ValidColumn(int column)
+        public void Test_Box_13_Contructor_ValidColumn(int column)
         {
-            //Arrange
-            var line = 1;
-
             //Act
-            var result = new Box(line, column);
-
-            var a = new Box(1,2).Equals(new Box(1,2));
+            var result = new Box(1, column);
 
             //Assert
             Assert.IsNotNull(result);
-            Assert.That(result.Line, Is.EqualTo(line));
+            Assert.That(result.Line, Is.EqualTo(1));
             Assert.That(result.Column, Is.EqualTo(column));
         }
 
         [Test]
-        public void Test_20_GetHashcode_UniqueForEachBox()
+        public void Test_Box_20_GetHashcode_UniqueForEachBox()
         {
             //Arrange
             var hashSets = new HashSet<int>();
-
-            //Act
-            for (var line = 1; line <= 9; line++)
+            for (var line = 1; line <= Board.Size; line++)
             {
-                for (var column = 1; column <= 9; column++)
+                for (var column = 1; column <= Board.Size; column++)
                 {
                     hashSets.Add(new Box(line, column).GetHashCode());
                 }
             }
 
-            hashSets.Add(new Box(1, 1).GetHashCode()); //already generated, thus it should not increase the size of hashset
+            //Act: already generated, thus it should not increase the size of hashset
+            hashSets.Add(new Box(1, 1).GetHashCode()); 
 
             //Assert
-            Assert.That(hashSets.Count, Is.EqualTo(9*9));
+            Assert.That(hashSets.Count, Is.EqualTo(Board.Size * Board.Size));
         }
     }
 }
