@@ -19,8 +19,8 @@ namespace sudoku_solver
     {
       _board = new HashSet<int>[Size, Size];
 
-      var values = new List<int>(Board.Size);
-      for (var value = 1; value <= 9; value++)
+      var values = new List<int>(Size);
+      for (var value = 1; value <= Size; value++)
       {
         values.Add(value);
       }
@@ -35,7 +35,7 @@ namespace sudoku_solver
     }
 
     /// <summary>
-    /// List the possible values for the spcified box
+    /// List the possible values for the specified box
     /// </summary>
     /// <param name="box"></param>
     /// <returns>the list of values</returns>
@@ -112,9 +112,9 @@ namespace sudoku_solver
     {
       var boxes = new List<IEnumerable<Box>>();
 
-      for (var line = 1; line <= Board.Size; line += 2)
+      for (var line = 1; line <= Size; line += 2)
       {
-        for (var column = 1; column <= Board.Size; column += 2)
+        for (var column = 1; column <= Size; column += 2)
         {
           boxes.Add(ListBoxesInSquare(new Box(line, column)));
         }

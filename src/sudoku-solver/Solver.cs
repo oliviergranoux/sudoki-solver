@@ -26,150 +26,29 @@ namespace sudoku_solver
       _actions.Enqueue(action);
     }
 
-    private void RemoveValueInBoxes(int value, IEnumerable<Box> boxes)
-    {
-      foreach (var box in boxes)
-      {
-        var values = _board.ListValuesInBox(box);
-        if (values.Count() > 1)
-        {
-          _board.RemoveValueInBox(value, box);
-
-          var valuesLeft = _board.ListValuesInBox(box);
-          if (valuesLeft.Count() == 1)
-            Add(new Action(box, valuesLeft.First()));
-        }
-      }
-    }
-
-    private void CheckUniqueValueWithinBoxes(IEnumerable<Box> boxes)
-    {
-      //check if a value is unique in the list of boxes with multiple values
-      //In this box, add an action
-      for (var value = 1; value <= 9; value++)
-      {
-        var filteredBoxes = _board.FilterBoxesContainingValue(boxes, value);
-        if (filteredBoxes.Count() == 1 && _board.ListValuesInBox(filteredBoxes.First()).Count() > 1)
-        {
-          Add(new Action(filteredBoxes.First(), value));
-        }
-      }
-    }
-
     public Board Solve()
     {
       while (_actions.Any())
       {
-        //basic logic
-        {
-          var currentAction = _actions.Dequeue();
+        //first step: Set value in specified box and remove this possible value from other box of square, line and column
+        var currentAction = _actions.Dequeue();
+        ApplyValueInBox(currentAction.Value, currentAction.Box);
 
-          _board.SetValueInBox(currentAction.Value, currentAction.Box);
+        //second step: for each section (square, line, column), check if a value is possible only in one box
+        if (_actions.Count() == 0)
+          CheckValueInSingleBoxBySquare();
+        if (_actions.Count() == 0)
+          CheckValueInSingleBoxByLine();
+        if (_actions.Count() == 0)
+          CheckValueInSingleBoxByColumn();
 
-          var boxes = new HashSet<Box>();
-          boxes.UnionWith(_board.ListBoxesInLine(currentAction.Box));
-          boxes.UnionWith(_board.ListBoxesInColumn(currentAction.Box));
-          boxes.UnionWith(_board.ListBoxesInSquare(currentAction.Box));
-          RemoveValueInBoxes(currentAction.Value, boxes);
-        }
-        
-        //CheckUniqueValueWithinBoxes - Squares
+        //third step: check that value is possible only in a same line (or column) of the current square
         if (_actions.Count() == 0)
         {
-          var tempBoxes = new List<Box> {
-            new Box(2, 2), new Box(2, 5), new Box(2, 8),
-            new Box(5, 2), new Box(5, 5), new Box(5, 8),
-            new Box(8, 2), new Box(8, 5), new Box(8, 8)
-          };
-
-          foreach (var box in tempBoxes)
+          var boxesBySquare = _board.ListBoxesInAllSquares();
+          foreach (var boxesInSquare in boxesBySquare)
           {
-            CheckUniqueValueWithinBoxes(_board.ListBoxesInSquare(box));
-          }
-        }
-
-        //CheckUniqueValueWithinBoxes - Lines & Columns
-        if (_actions.Count() == 0)
-        {
-          var tempBoxes = new List<Box> {
-            new Box(1, 1), new Box(2, 2), new Box(3, 3),
-            new Box(4, 4), new Box(5, 5), new Box(6, 6),
-            new Box(7, 7), new Box(8, 8), new Box(9, 9)
-          };
-
-          foreach (var box in tempBoxes)
-          {
-            CheckUniqueValueWithinBoxes(_board.ListBoxesInLine(box));
-            CheckUniqueValueWithinBoxes(_board.ListBoxesInColumn(box));
-          }
-        }
-
-        //...
-        if (_actions.Count() == 0)
-        {
-          var tempBoxes = new List<Box> {
-            new Box(2, 2), new Box(2, 5), new Box(2, 8),
-            new Box(5, 2), new Box(5, 5), new Box(5, 8),
-            new Box(8, 2), new Box(8, 5), new Box(8, 8)
-          };
-          
-          //fill the dictionary
-          foreach(var boxesBySquare in _board.ListBoxesInAllSquares())
-          {
-            var boxesByValue = new Dictionary<int, HashSet<Box>>();
-
-            // var boxesInTheSquare = _board.ListBoxesInSquare(tempBox);
-            foreach (var box in boxesBySquare)
-            {
-              //fill the dictionary
-              var values = _board.ListValuesInBox(box);
-              if (values.Count() > 1)
-              {
-                foreach (var value in values)
-                {
-                  if (!boxesByValue.ContainsKey(value))
-                    boxesByValue.Add(value, new HashSet<Box> { box });
-                  else
-                    boxesByValue[value].Add(box);
-                }
-              }
-            }
-
-            foreach (var groupedBoxes in boxesByValue)
-            {
-              var boxes = groupedBoxes.Value;
-              var value = groupedBoxes.Key;
-
-              if (boxes.Count() == 1)
-              {
-                Add(new Action(boxes.First(), value));
-              }
-              else
-              {
-                //boxes are on the same line
-                if (boxes.GroupBy(box => box.Line).Count() == 1)
-                {
-                  //remove from line in other squares
-                  var boxesToRemove = _board.ListBoxesInLine(boxes.First())
-                      .Where(box => !boxes.Any(e => e.Equals(box)))
-                      .ToList();
-                  RemoveValueInBoxes(value, boxesToRemove);
-
-                  boxesToRemove.ForEach(box => CheckUniqueValueWithinBoxes(_board.ListBoxesInSquare(box)));
-                }
-                //cases are on the same column
-                else if (boxes.GroupBy(c => c.Column).Count() == 1)
-                {
-                  //remove from column in other squares
-                  var boxesToRemove = _board.ListBoxesInColumn(boxes.First())
-                      .Where(box => !boxes.Any(e => e.Equals(box)))
-                      .ToList();
-                  RemoveValueInBoxes(value, boxesToRemove);
-
-                  boxesToRemove.ForEach(box => CheckUniqueValueWithinBoxes(_board.ListBoxesInSquare(box)));
-                }
-              }
-            }
+            CheckValueIsInSameLineOrColumnWithinSquare(boxesInSquare);
           }
         }
       }
@@ -177,5 +56,153 @@ namespace sudoku_solver
       return _board;
     }
 
+    /// <summary>
+    /// Set a value in a box.
+    /// Remove this value in other boxes (excluded those that value is found) of same square/line/column.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="box"></param>
+    private void ApplyValueInBox(int value, Box box)
+    {
+      _board.SetValueInBox(value, box);
+
+      RemoveValueInBoxes(value, _board.ListBoxesInLine(box));
+      RemoveValueInBoxes(value, _board.ListBoxesInColumn(box));
+      RemoveValueInBoxes(value, _board.ListBoxesInSquare(box));
+    }
+
+    private void CheckValueInSingleBoxBySquare()
+    {
+      for (var line = 1; line <= Board.Size; line += 2)
+      {
+        for (var column = 1; column <= Board.Size; column += 2)
+        {
+          CheckValueInSingleBox(_board.ListBoxesInSquare(new Box(line, column)));
+        }
+      }
+    }
+
+    private void CheckValueInSingleBoxByLine()
+    {
+      for (var pos = 1; pos <= Board.Size; pos++)
+      {
+        CheckValueInSingleBox(_board.ListBoxesInLine(new Box(pos, pos)));
+      }
+    }
+
+    private void CheckValueInSingleBoxByColumn()
+    {
+      for (var pos = 1; pos <= Board.Size; pos++)
+      {
+        CheckValueInSingleBox(_board.ListBoxesInColumn(new Box(pos, pos)));
+      }
+    }
+
+    private void CheckValueIsInSameLineOrColumnWithinSquare(IEnumerable<Box> boxesInSquare)
+    {     
+      foreach (var groupedBoxes in ListBoxesByValue(boxesInSquare))
+      {
+        var boxes = groupedBoxes.Value;
+        var value = groupedBoxes.Key;
+
+        if (boxes.Count() == 1)
+        {
+          //The case with one possible box should not happen as it is already managed before.
+          Add(new Action(boxes.First(), value));
+        }
+        else
+        {
+          var boxesWhereToRemoveValue = new List<Box>();
+
+          if (boxes.GroupBy(box => box.Line).Count() == 1)
+          {
+            //list boxes in same line where the value has to be removed
+            boxesWhereToRemoveValue = _board.ListBoxesInLine(boxes.First())
+                .Where(box => !boxes.Any(e => e.Equals(box)))
+                .ToList();
+          }
+          else if (boxes.GroupBy(c => c.Column).Count() == 1)
+          {
+            //list boxes in same column where the value has to be removed           
+            boxesWhereToRemoveValue = _board.ListBoxesInColumn(boxes.First())
+                .Where(box => !boxes.Any(e => e.Equals(box)))
+                .ToList();
+          }
+
+          if (boxesWhereToRemoveValue.Count > 0)
+          {
+            //remove value from other boxes of the same column ...
+            RemoveValueInBoxes(value, boxesWhereToRemoveValue);
+
+            //... and check if removed value in these boxes affect the unicity of the value in their own square
+            boxesWhereToRemoveValue.ForEach(box => CheckValueInSingleBox(_board.ListBoxesInSquare(box)));       
+          }
+        }
+      }
+    }
+
+    private Dictionary<int, HashSet<Box>> ListBoxesByValue(IEnumerable<Box> boxes)
+    {
+      var boxesByValue = new Dictionary<int, HashSet<Box>>();
+
+      //determine the list of possible boxes for each value (and thus exclude boxes with an unique value)
+      foreach (var box in boxes)
+      {
+        var values = _board.ListValuesInBox(box);
+        if (values.Count() > 1)
+        {
+          foreach (var value in values)
+          {
+            if (!boxesByValue.ContainsKey(value))
+              boxesByValue.Add(value, new HashSet<Box> { box });
+            else
+              boxesByValue[value].Add(box);
+          }
+        }
+      }
+
+      return boxesByValue;
+    }
+
+    private void CheckValueInSingleBox(IEnumerable<Box> boxes)
+    {
+      //check if a value is unique in the list of boxes with multiple values
+      //In this box, add an action
+      for (var value = 1; value <= Board.Size; value++)
+      {
+        var filteredBoxes = _board.FilterBoxesContainingValue(boxes, value);
+        if (filteredBoxes.Count() == 1 && _board.ListValuesInBox(filteredBoxes[0]).Count() > 1)
+        {
+          Add(new Action(filteredBoxes.First(), value));
+        }
+      }
+    }
+
+    private void RemoveValueInBoxes(int value, IEnumerable<Box> boxes)
+    {
+      foreach(var box in boxes)
+      {
+        RemoveValueInBox(value, box);
+      }
+    }
+
+    /// <summary>
+    /// Remove value in box if there are two or more possibel values.
+    /// After that, add an action if box stay with only one value possible.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="boxes"></param>
+    private void RemoveValueInBox(int value, Box box)
+    {
+      var values = _board.ListValuesInBox(box);
+      if (values.Count() > 1)
+      {
+        _board.RemoveValueInBox(value, box);
+
+        var valuesLeft = _board.ListValuesInBox(box);
+        if (valuesLeft.Count() == 1)
+          Add(new Action(box, valuesLeft.First()));
+      }
+    }
   }
 }

@@ -9,7 +9,7 @@ namespace sudoku_solver
       Console.WriteLine("===========");
       try
       {
-        Console.WriteLine(Parser.Parse("board-3.txt").Solve().ToString(false));
+        Console.WriteLine(Parser.Parse("board-9.txt").Solve().ToString(false));
       }
       catch (Exception ex)
       {
