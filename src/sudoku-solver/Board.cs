@@ -92,9 +92,6 @@ namespace sudoku_solver
       //get position of the first box of the square
       var line = ((box.Line - 1) / 3) * 3 + 1;
       var column = ((box.Column - 1) / 3) * 3 + 1;
-
-      // Console.WriteLine($"{box.Line}x{box.Column} ->> {line}x{column}");
-
       var boxes = new HashSet<Box>();
 
       for (var i = line; i <= line + 2; i++)
@@ -112,9 +109,9 @@ namespace sudoku_solver
     {
       var boxes = new List<IEnumerable<Box>>();
 
-      for (var line = 1; line <= Size; line += 2)
+      for (var line = 1; line <= Size; line += 3)
       {
-        for (var column = 1; column <= Size; column += 2)
+        for (var column = 1; column <= Size; column += 3)
         {
           boxes.Add(ListBoxesInSquare(new Box(line, column)));
         }
@@ -157,10 +154,8 @@ namespace sudoku_solver
       if (boxes == null)
         throw new ArgumentNullException(nameof(boxes));
 
-      if (boxes.Any(box => box == null))
-        throw new ArgumentNullException("box");
-
       return boxes
+          .Where(box => box != null)
           .Where(box => ListValuesInBox(box).Contains(value))
           .ToList();
     }
